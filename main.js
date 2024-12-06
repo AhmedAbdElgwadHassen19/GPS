@@ -75,6 +75,10 @@ $(document).ready(function() {
   $('#requestTrip').click(function() {
     // إظهار input لإدخال المدن
     $('.input-group').toggle();
+    // تفريغ input
+    $('#startCity').val('');
+  $('#endCity').val('');
+
     map.eachLayer(function(layer) {
       if (layer instanceof L.Marker) {
         map.removeLayer(layer); // مسح العلامات السابقة
