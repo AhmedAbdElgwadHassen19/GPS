@@ -1,119 +1,89 @@
-$(document).ready(function() {
-  // إنشاء الخريطة باستخدام Leaflet
-  const map = L.map('map').setView([30.033, 31.233], 5); // نقطة البداية الافتراضية في مصر
+// متغيرات
+var map = L.map('map').setView([30.0444, 31.2357], 12);  // إحداثيات افتراضية (القاهرة)
+var userActive = false; // حالة المستخدم
+var routeControl; // المتحكم في المسار
 
-  // إضافة الخريطة من OpenStreetMap
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+// تحميل الخريطة باستخدام OpenStreetMap
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
+}).addTo(map);
 
-  // دالة لتحويل اسم المدينة إلى إحداثيات باستخدام Nominatim API
-  function getCoordinates(city, callback) {
-    $.ajax({
-      url: `https://nominatim.openstreetmap.org/search?format=json&q=${city}`,
-      method: 'GET',
-      success: function(data) {
-        if (data.length > 0) {
-          const lat = parseFloat(data[0].lat);
-          const lon = parseFloat(data[0].lon);
-          callback(lat, lon);
-        } else {
-          alert('المدينة أو المنطقة غير موجودة');
-        }
-      },
-      error: function() {
-        alert('حدث خطأ أثناء البحث عن المدينة');
-      }
-    });
-  }
-
-  // وظيفة لعرض المسار بين نقطتين على الخريطة
-  function plotRoute(startLat, startLng, endLat, endLng) {
-    // تنظيف الخريطة من أي مسارات سابقة
-    map.eachLayer(function(layer) {
-      if (layer instanceof L.Polyline || layer instanceof L.Marker) {
-        map.removeLayer(layer);
-      }
-    });
-
-    // إضافة نقطة البداية
-    const startMarker = L.marker([startLat, startLng]).addTo(map).bindPopup("نقطة البداية").openPopup();
-
-    // تكبير الخريطة على نقطة البداية
-    map.setView([startLat, startLng], 10); // الرقم 10 يمثل مستوى التكبير (يمكنك تغييره حسب الحاجة)
-
-    // إضافة نقطة النهاية
-    const endMarker = L.marker([endLat, endLng]).addTo(map).bindPopup("نقطة النهاية").openPopup();
-
-    // رسم المسار بين النقاط
-    const route = L.polyline([
-      [startLat, startLng],
-      [endLat, endLng]
-    ], { color: 'blue' }).addTo(map);
-  }
-
-  // عند الضغط على زر "عرض المسار"
-  $('#plotRoute').click(function() {
-    const startCity = $('#startCity').val().trim();
-    const endCity = $('#endCity').val().trim();
-
-    if (startCity && endCity) {
-      // البحث عن الإحداثيات للمدينة الأولى
-      getCoordinates(startCity, function(startLat, startLng) {
-        // البحث عن الإحداثيات للمدينة الثانية
-        getCoordinates(endCity, function(endLat, endLng) {
-          // رسم المسار بين المدينتين
-          plotRoute(startLat, startLng, endLat, endLng);
-        });
-      });
-    } else {
-      alert('الرجاء إدخال اسم المدينة أو المنطقة في كلا الحقلين');
-    }
-  });
-
-  // عند الضغط على زر "طلب رحلة"
-  $('#requestTrip').click(function() {
-    // إظهار input لإدخال المدن
-    $('.input-group').toggle();
-    // تفريغ input
-    $('#startCity').val('');
-  $('#endCity').val('');
-
-    map.eachLayer(function(layer) {
-      if (layer instanceof L.Marker) {
-        map.removeLayer(layer); // مسح العلامات السابقة
-      }
-    });
-    // إعادة الخريطة إلى الحالة الافتراضية
-    map.setView([30.033, 31.233], 5); // إعادة الخريطة إلى نقطة البداية
-  });
-
-  // عند الضغط على زر "إلغاء الرحلة"
-  $('#cancelTrip').click(function() {
-    // إخفاء input
-    $('.input-group').hide();
-    // مسح الخريطة
-    map.eachLayer(function(layer) {
-      if (layer instanceof L.Marker || layer instanceof L.Polyline) {
-        map.removeLayer(layer); // مسح العلامات والمسارات
-      }
-    });
-    // إعادة الخريطة إلى الحالة الافتراضية
-    map.setView([30.033, 31.233], 5);
-  });
-
-  // عند الضغط على زر "تفعيل/تعطيل المستخدم"
-  $('#toggleUserStatus').click(function() {
-    const currentText = $(this).text();
-    if (currentText === 'تفعيل/تعطيل المستخدم') {
-      // تغيير النص إلى "المستخدم مفعل"
-      $(this).text('المستخدم مفعل');
-      alert('تم تفعيل المستخدم');
-    } else {
-      // تغيير النص إلى "تفعيل/تعطيل المستخدم"
-      $(this).text('تفعيل/تعطيل المستخدم');
-      alert('تم تعطيل المستخدم');
-    }
-  });
+// تفعيل/إلغاء تفعيل المستخدم
+$('#userBtn').click(function() {
+    userActive = !userActive;
+    console.log(userActive); // طباعة حالة المستخدم في الكونسول
+    $(this).text(userActive ? 'إلغاء تفعيل المستخدم' : 'تفعيل المستخدم');
 });
 
+// إظهار مدخلات الرحلة عند الضغط على زر "طلب رحلة"
+$('#tripBtn').click(function() {
+    $('#tripInputs').toggle();
+});
+
+// بدء الرحلة
+$('#startTripBtn').click(function() {
+    var startLocation = $('#startLocation').val();
+    var endLocation = $('#endLocation').val();
+    
+    if (startLocation && endLocation) {
+        // من المفترض هنا استخدام API لتحويل أسماء المدن إلى إحداثيات
+        getCoordinatesFromLocation(startLocation, function(startCoords) {
+            getCoordinatesFromLocation(endLocation, function(endCoords) {
+                // طباعة الإحداثيات في الكونسول
+                console.log('إحداثيات نقطة البداية: ', startCoords);
+                console.log('إحداثيات نقطة النهاية: ', endCoords);
+
+                // عرض المسار بين النقاط
+                if (routeControl) {
+                    map.removeControl(routeControl);  // إزالة المسار السابق إذا كان موجود
+                }
+
+                // رسم المسار بين النقاط بلون أزرق
+                routeControl = L.Routing.control({
+                    waypoints: [
+                        L.latLng(startCoords),
+                        L.latLng(endCoords)
+                    ],
+                    routeWhileDragging: true,
+                    lineOptions: {
+                        styles: [{ color: 'blue', weight: 5 }]  // تغيير اللون إلى الأزرق
+                    }
+                }).addTo(map);
+
+                // إفراغ المدخلات بعد بدء الرحلة
+                $('#startLocation').val('');
+                $('#endLocation').val('');
+                $('#tripInputs').hide(); // إخفاء مدخلات الرحلة بعد بدء الرحلة
+            });
+        });
+    } else {
+        alert('من فضلك أدخل كلا النقطتين');
+    }
+});
+
+// إلغاء الرحلة
+$('#cancelTripBtn').click(function() {
+    if (routeControl) {
+        map.removeControl(routeControl);  // إزالة المسار
+    }
+    $('#startLocation').val('');
+    $('#endLocation').val('');
+    $('#tripInputs').hide(); // إخفاء مدخلات الرحلة
+});
+
+// دالة لتحويل أسماء المدن إلى إحداثيات باستخدام API من OpenStreetMap (Nominatim)
+function getCoordinatesFromLocation(location, callback) {
+    var geocodeUrl = 'https://nominatim.openstreetmap.org/search?format=json&q=' + location;
+    
+    $.ajax({
+        url: geocodeUrl,
+        success: function(data) {
+            if (data && data.length > 0) {
+                var coords = [data[0].lat, data[0].lon];
+                callback(coords);
+            } else {
+                alert('لم يتم العثور على إحداثيات لهذا الموقع');
+            }
+        }
+    });
+}
